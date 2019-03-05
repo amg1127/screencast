@@ -62,9 +62,15 @@ for min in `seq -f %03g 1 999`; do
             fi
         fi
     done
-    for timer in `seq 1 60`; do
-        sleep 5
+    for timer in `seq 1 300`; do
+        sleep 1
         if "${keeepRecording}"; then
+            if ! [ -d "/proc/${recordPID}" ]; then
+                echo 'Gravador finalizou abruptamente, aparentemente...'
+                wait "${recordPID}"
+                recordPID=''
+                break
+            fi
             if ! [ "`stat -f -c '%a*%S/1024/1024/1024' \"${cachedir}\" | bc`" -ge 100 ]; then
                 echo 'Pouco espaco em disco! Finalizando gravacao imediatamente...'
                 keeepRecording='false'
@@ -74,7 +80,9 @@ for min in `seq -f %03g 1 999`; do
             break
         fi
     done
-    kill -INT "${recordPID}"
+    if [ "x${recordPID}" != 'x' ]; then
+        kill -INT "${recordPID}"
+    fi
     if ! "${keeepRecording}"; then
         break
     fi
@@ -84,7 +92,6 @@ chrt -v -b -p 0 "${recordPID}"
 renice 19 "${recordPID}"
 ionice -c 3 -p "${recordPID}"
 
-trap '' INT TERM
 echo 'Esperando os processos disparados em segundo plano...'
 for recordPID in ${recordPIDS}; do
     wait "${recordPID}"
