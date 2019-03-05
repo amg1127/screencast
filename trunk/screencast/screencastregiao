@@ -45,7 +45,7 @@ for min in `seq -f %03g 1 999`; do
     set +x
     recordPIDS="${recordPIDS} ${recordPID}"
     for timer in `seq 1 60`; do
-        sleep 1
+        sleep 5
         if "${keeepRecording}"; then
             if ! [ "`stat -f -c '%a*%S/1024/1024/1024' \"${cachedir}\" | bc`" -ge 100 ]; then
                 echo 'Pouco espaco em disco! Finalizando gravacao imediatamente...'
