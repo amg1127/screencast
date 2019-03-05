@@ -28,7 +28,7 @@ ybr="${Y}"
 echo 'Iniciando a gravacao com o "recordmydesktop".'
 cachedir="${HOME}/.cache/recordmydesktop"
 mkdir -p "${cachedir}" || exit 1
-echo 'Envie CTRL+C para este script para interromper. Nao tecle CTRL+S'
+echo 'Envie CTRL+C para este script para interromper. Nao tecle CTRL+ALT+S'
 
 keeepRecording='true'
 trap 'keeepRecording="false"' INT TERM
