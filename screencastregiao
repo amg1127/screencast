@@ -25,10 +25,25 @@ echo 'Use "Control+Alt+S" para finalizar a gravacao.'
 echo "O arquivo de video gerado sera \"out.${$}.ogv\"."
 echo ''
 
+cachedir="${HOME}/.config/recordmydesktop/${$}"
+mkdir -p "${cachedir}" || exit 1
 set -x
-exec recordmydesktop -x ${xtl} -y ${ytl} \
+recordmydesktop -x ${xtl} -y ${ytl} \
     --width $((xbr-xtl+1)) --height $((ybr-ytl+1)) \
     --no-cursor --fps 30 \
-    --workdir /tmp \
+    --workdir "${cachedir}" \
     --device pulse \
-    --overwrite -o "out.${$}.ogv"
+    --overwrite -o "out.${$}.ogv" & recordPID=${!}
+set +x
+
+while [ -d "/proc/${recordPID}" ]; do
+    sleep 1
+    if ! [ "`stat -f -c '%a*%S/1024/1024/1024' \"${cachedir}\" | bc`" -ge 4 ]; then
+        echo 'Pouco espaco em disco! Finalizando gravacao imediatamente...'
+        kill -INT ${recordPID}
+        break
+    fi
+done
+wait ${recordPID}
+
+rmdir "${cachedir}"
