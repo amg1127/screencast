@@ -1,0 +1,34 @@
+#!/bin/bash
+
+echo 'Posicione o mouse no canto superior esquerdo da regiao para gravar.'
+echo 'Em seguida, pressione <ENTER> para continuar.'
+read
+eval `xdotool getmouselocation --shell`
+test "x${X}" != 'x' -a "y${Y}" != 'y' || exit 1
+echo "Mouse esta em X=${X} ; Y=${Y}"
+xtl="${X}"
+ytl="${Y}"
+
+echo ''
+echo 'Agora, posicione o mouse no canto inferior direito da regiao para gravar.'
+echo 'Em seguida, pressione <ENTER> para continuar.'
+read
+eval `xdotool getmouselocation --shell`
+test "x${X}" != 'x' -a "y${Y}" != 'y' || exit 1
+echo "Mouse esta em X=${X} ; Y=${Y}"
+xbr="${X}"
+ybr="${Y}"
+
+echo 'Iniciando a gravacao com o "recordmydesktop".'
+echo 'Use "Control+Alt+P" para pausar/reiniciar a gravacao.'
+echo 'Use "Control+Alt+S" para finalizar a gravacao.'
+echo "O arquivo de video gerado sera \"out.${$}.ogv\"."
+echo ''
+
+set -x
+exec recordmydesktop -x ${xtl} -y ${ytl} \
+    --width $((xbr-xtl+1)) --height $((ybr-ytl+1)) \
+    --no-cursor --fps 30 \
+    --workdir /tmp \
+    --device pulse \
+    --overwrite -o "out.${$}.ogv"
