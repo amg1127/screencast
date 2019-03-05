@@ -43,7 +43,17 @@ for min in `seq -f %03g 1 999`; do
         --device pulse \
         --overwrite -o "${outfiletemplate}.${min}.ogv" & recordPID=${!}
     set +x
-    recordPIDS="${recordPIDS} ${recordPID}"
+    oldRecordPIDS="${recordPIDS}"
+    recordPIDS="${recordPID}"
+    for onePID in ${oldRecordPIDS}; do
+        if [ "x${onePID}" != 'x' ]; then
+            if [ -d "/proc/${onePID}" ]; then
+                recordPIDS="${onePID} ${recordPIDS}"
+            else
+                wait "${onePID}"
+            fi
+        fi
+    done
     for timer in `seq 1 60`; do
         sleep 5
         if "${keeepRecording}"; then
@@ -56,6 +66,7 @@ for min in `seq -f %03g 1 999`; do
             break
         fi
     done
+    chrt -b -p 0 "${recordPID}" & \
     renice 19 "${recordPID}" & \
     ionice -c 3 -p "${recordPID}" & \
     kill -INT "${recordPID}"
