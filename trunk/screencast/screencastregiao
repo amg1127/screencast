@@ -41,7 +41,7 @@ for min in `seq -f %03g 1 999`; do
     set -x
     recordmydesktop -x ${xtl} -y ${ytl} \
         --width $((xbr-xtl+1)) --height $((ybr-ytl+1)) \
-        --no-cursor --fps 30 \
+        --no-cursor --fps 15 \
         --workdir "${cachedir}" \
         --device pulse \
         --overwrite -o "${outfiletemplate}.${min}.ogv" & recordPID=${!}
@@ -79,6 +79,10 @@ for min in `seq -f %03g 1 999`; do
         break
     fi
 done
+
+chrt -v -b -p 0 "${recordPID}"
+renice 19 "${recordPID}"
+ionice -c 3 -p "${recordPID}"
 
 trap '' INT TERM
 echo 'Esperando os processos disparados em segundo plano...'
