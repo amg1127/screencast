@@ -32,9 +32,12 @@ echo 'Envie CTRL+C para este script para interromper. Nao tecle CTRL+ALT+S'
 
 keeepRecording='true'
 trap 'keeepRecording="false"' INT TERM
+recordPID=''
 recordPIDS=''
+oldRecordPID=''
 
 for min in `seq -f %03g 1 999`; do
+    oldRecordPID="${recordPID}"
     set -x
     recordmydesktop -x ${xtl} -y ${ytl} \
         --width $((xbr-xtl+1)) --height $((ybr-ytl+1)) \
@@ -43,6 +46,11 @@ for min in `seq -f %03g 1 999`; do
         --device pulse \
         --overwrite -o "${outfiletemplate}.${min}.ogv" & recordPID=${!}
     set +x
+    if [ "x${oldRecordPID}" != 'x' ]; then
+        chrt -v -b -p 0 "${oldRecordPID}"
+        renice 19 "${oldRecordPID}"
+        ionice -c 3 -p "${oldRecordPID}"
+    fi
     oldRecordPIDS="${recordPIDS}"
     recordPIDS="${recordPID}"
     for onePID in ${oldRecordPIDS}; do
@@ -66,9 +74,6 @@ for min in `seq -f %03g 1 999`; do
             break
         fi
     done
-    chrt -b -p 0 "${recordPID}" & \
-    renice 19 "${recordPID}" & \
-    ionice -c 3 -p "${recordPID}" & \
     kill -INT "${recordPID}"
     if ! "${keeepRecording}"; then
         break
