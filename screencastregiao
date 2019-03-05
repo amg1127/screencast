@@ -1,5 +1,11 @@
 #!/bin/bash
 
+outfiletemplate="${1}"
+if [ "x${outfiletemplate}" == 'x' ]; then
+    echo "Uso: ${0} <template de nome de arquivos>"
+    exit 1
+fi
+
 echo 'Posicione o mouse no canto superior esquerdo da regiao para gravar.'
 echo 'Em seguida, pressione <ENTER> para continuar.'
 read
@@ -20,30 +26,48 @@ xbr="${X}"
 ybr="${Y}"
 
 echo 'Iniciando a gravacao com o "recordmydesktop".'
-echo 'Use "Control+Alt+P" para pausar/reiniciar a gravacao.'
-echo 'Use "Control+Alt+S" para finalizar a gravacao.'
-echo "O arquivo de video gerado sera \"out.${$}.ogv\"."
-echo ''
-
-cachedir="${HOME}/.config/recordmydesktop"
+cachedir="${HOME}/.cache/recordmydesktop"
 mkdir -p "${cachedir}" || exit 1
-set -x
-recordmydesktop -x ${xtl} -y ${ytl} \
-    --width $((xbr-xtl+1)) --height $((ybr-ytl+1)) \
-    --no-cursor --fps 30 \
-    --workdir "${cachedir}" \
-    --device pulse \
-    --overwrite -o "out.${$}.ogv" & recordPID=${!}
-set +x
+echo 'Envie CTRL+C para este script para interromper. Nao tecle CTRL+S'
 
-while [ -d "/proc/${recordPID}" ]; do
-    sleep 1
-    if ! [ "`stat -f -c '%a*%S/1024/1024/1024' \"${cachedir}\" | bc`" -ge 4 ]; then
-        echo 'Pouco espaco em disco! Finalizando gravacao imediatamente...'
-        kill -INT ${recordPID}
+keeepRecording='true'
+trap 'keeepRecording="false"' INT TERM
+recordPIDS=''
+
+for min in `seq -f %03g 1 999`; do
+    set -x
+    recordmydesktop -x ${xtl} -y ${ytl} \
+        --width $((xbr-xtl+1)) --height $((ybr-ytl+1)) \
+        --no-cursor --fps 30 \
+        --workdir "${cachedir}" \
+        --device pulse \
+        --overwrite -o "${outfiletemplate}.${min}.ogv" & recordPID=${!}
+    set +x
+    recordPIDS="${recordPIDS} ${recordPID}"
+    for timer in `seq 1 60`; do
+        sleep 1
+        if "${keeepRecording}"; then
+            if ! [ "`stat -f -c '%a*%S/1024/1024/1024' \"${cachedir}\" | bc`" -ge 100 ]; then
+                echo 'Pouco espaco em disco! Finalizando gravacao imediatamente...'
+                keeepRecording='false'
+                break
+            fi
+        else
+            break
+        fi
+    done
+    kill -INT "${recordPID}"
+    renice 19 "${recordPID}"
+    ionice -c 3 -p "${recordPID}"
+    if ! "${keeepRecording}"; then
         break
     fi
 done
-wait ${recordPID}
+
+trap '' INT TERM
+echo 'Esperando os processos disparados em segundo plano...'
+for recordPID in ${recordPIDS}; do
+    wait "${recordPID}"
+done
 
 rmdir "${cachedir}"
