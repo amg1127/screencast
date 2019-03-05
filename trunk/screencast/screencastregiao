@@ -56,9 +56,9 @@ for min in `seq -f %03g 1 999`; do
             break
         fi
     done
+    renice 19 "${recordPID}" & \
+    ionice -c 3 -p "${recordPID}" & \
     kill -INT "${recordPID}"
-    renice 19 "${recordPID}"
-    ionice -c 3 -p "${recordPID}"
     if ! "${keeepRecording}"; then
         break
     fi
