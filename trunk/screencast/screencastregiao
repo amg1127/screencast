@@ -25,7 +25,7 @@ echo 'Use "Control+Alt+S" para finalizar a gravacao.'
 echo "O arquivo de video gerado sera \"out.${$}.ogv\"."
 echo ''
 
-cachedir="${HOME}/.config/recordmydesktop/${$}"
+cachedir="${HOME}/.config/recordmydesktop"
 mkdir -p "${cachedir}" || exit 1
 set -x
 recordmydesktop -x ${xtl} -y ${ytl} \
