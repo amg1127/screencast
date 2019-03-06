@@ -62,7 +62,7 @@ for min in `seq -f %03g 1 999`; do
             fi
         fi
     done
-    for timer in `seq 1 60`; do
+    for timer in `seq 1 300`; do
         read -t 1
         if "${keepRecording}"; then
             if ! [ -d "/proc/${recordPID}" ]; then
