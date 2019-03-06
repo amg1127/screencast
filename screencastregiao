@@ -30,22 +30,24 @@ cachedir="${HOME}/.cache/recordmydesktop"
 mkdir -p "${cachedir}" || exit 1
 echo 'Envie CTRL+C para este script para interromper. Nao tecle CTRL+ALT+S'
 
-keeepRecording='true'
-trap 'keeepRecording="false"' INT TERM
+keepRecording='true'
+trap 'keepRecording='\''false'\''' INT TERM
+set -m
+
 recordPID=''
 recordPIDS=''
 oldRecordPID=''
 
 for min in `seq -f %03g 1 999`; do
     oldRecordPID="${recordPID}"
-    set -x
     recordmydesktop -x ${xtl} -y ${ytl} \
         --width $((xbr-xtl+1)) --height $((ybr-ytl+1)) \
         --no-cursor --fps 15 \
         --workdir "${cachedir}" \
         --device pulse \
         --overwrite -o "${outfiletemplate}.${min}.ogv" & recordPID=${!}
-    set +x
+    disown
+    disown -a
     if [ "x${oldRecordPID}" != 'x' ]; then
         chrt -v -b -p 0 "${oldRecordPID}"
         renice 19 "${oldRecordPID}"
@@ -57,44 +59,54 @@ for min in `seq -f %03g 1 999`; do
         if [ "x${onePID}" != 'x' ]; then
             if [ -d "/proc/${onePID}" ]; then
                 recordPIDS="${onePID} ${recordPIDS}"
-            else
-                wait "${onePID}"
             fi
         fi
     done
-    for timer in `seq 1 300`; do
-        sleep 1
-        if "${keeepRecording}"; then
+    for timer in `seq 1 60`; do
+        read -t 1
+        if "${keepRecording}"; then
             if ! [ -d "/proc/${recordPID}" ]; then
                 echo 'Gravador finalizou abruptamente, aparentemente...'
-                wait "${recordPID}"
                 recordPID=''
                 break
             fi
             if ! [ "`stat -f -c '%a*%S/1024/1024/1024' \"${cachedir}\" | bc`" -ge 100 ]; then
                 echo 'Pouco espaco em disco! Finalizando gravacao imediatamente...'
-                keeepRecording='false'
+                keepRecording='false'
                 break
             fi
         else
+            echo 'CTRL+C pressionado. Saindo do laco...'
             break
         fi
     done
     if [ "x${recordPID}" != 'x' ]; then
         kill -INT "${recordPID}"
     fi
-    if ! "${keeepRecording}"; then
+    if ! "${keepRecording}"; then
+        echo 'CTRL+C pressionado. Saindo do laco...'
         break
     fi
 done
 
-chrt -v -b -p 0 "${recordPID}"
-renice 19 "${recordPID}"
-ionice -c 3 -p "${recordPID}"
+if [ "x${recordPID}" != 'x' ]; then
+    chrt -v -b -p 0 "${recordPID}"
+    renice 19 "${recordPID}"
+    ionice -c 3 -p "${recordPID}"
+fi
 
 echo 'Esperando os processos disparados em segundo plano...'
-for recordPID in ${recordPIDS}; do
-    wait "${recordPID}"
+while [ "x${recordPIDS}" != 'x' ]; do
+    oldRecordPIDS="${recordPIDS}"
+    recordPIDS=''
+    for onePID in ${oldRecordPIDS}; do
+        if [ "x${onePID}" != 'x' ]; then
+            if [ -d "/proc/${onePID}" ]; then
+                recordPIDS="${onePID} ${recordPIDS}"
+            fi
+        fi
+    done
+    read -t 1
 done
 
 rmdir "${cachedir}"
